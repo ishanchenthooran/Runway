@@ -27,6 +27,7 @@ from cost import estimate_cost
 from k8s_client import KubernetesClient
 from models import JobSpec, JobStatus, JobStatusResponse, JobSubmitResponse
 from quota import GPUQuotaStore
+from rate_limit import RateLimiter
 
 # Structured logging — swap for structlog or JSON formatter in production.
 logging.basicConfig(
@@ -47,6 +48,7 @@ app.mount("/metrics", make_asgi_app())
 # --- In-memory singletons ---
 # Constructed once at startup. Acceptable for v1 (single replica, no persistence).
 quota_store = GPUQuotaStore()
+rate_limiter = RateLimiter()
 k8s = KubernetesClient()
 
 
@@ -96,13 +98,17 @@ def submit_job(spec: JobSpec) -> JobSubmitResponse:
         # Step 1: Validate resource bounds (raises HTTPException on violation)
         check_admission(spec)
 
-        # Step 2: Check and reserve per-tenant GPU quota (raises HTTPException on violation)
+        # Step 2: Enforce per-tenant submission rate limit (raises HTTPException 429)
+        # Runs after admission so malformed requests don't consume quota.
+        rate_limiter.check_and_increment(spec.tenant_id)
+
+        # Step 3: Check and reserve per-tenant GPU quota (raises HTTPException on violation)
         quota_store.check_and_reserve(spec.tenant_id, spec.gpu_count)
 
-        # Step 3: Estimate worst-case cost before touching Kubernetes
+        # Step 4: Estimate worst-case cost before touching Kubernetes
         estimated_cost = estimate_cost(spec)
 
-        # Step 4: Submit to Kubernetes — first and only external call in this path
+        # Step 5: Submit to Kubernetes — first and only external call in this path
         try:
             job_id = k8s.submit_job(spec)
         except Exception:
