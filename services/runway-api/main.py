@@ -6,10 +6,12 @@ Each route delegates immediately to the appropriate module.
 
 Request flow (see docs/architecture.md §Request Flow):
   POST /jobs
-    1. Admission control   (admission.py)  — reject bad specs fast, no I/O
-    2. GPU quota check     (quota.py)      — in-memory, no I/O
-    3. Cost estimation     (cost.py)       — pure math, no I/O
-    4. K8s Job creation    (k8s_client.py) — only external call in the path
+    1. Admission control   (admission.py)       — reject bad specs fast, no I/O
+    2. Rate limit check    (rate_limit.py)      — in-memory, no I/O
+    3. GPU quota check     (quota.py)           — in-memory, no I/O
+    4. Cost estimation     (cost.py)            — pure math, no I/O
+    5. K8s Job creation    (k8s_client.py)      — only external call in the path
+    6. Reconciler register (quota_reconciler.py) — track job for quota release
 
 Start locally:
   uvicorn main:app --reload
@@ -17,6 +19,7 @@ Start locally:
 
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from prometheus_client import make_asgi_app
@@ -27,6 +30,7 @@ from cost import estimate_cost
 from k8s_client import KubernetesClient
 from models import JobSpec, JobStatus, JobStatusResponse, JobSubmitResponse
 from quota import GPUQuotaStore
+from quota_reconciler import QuotaReconciler
 from rate_limit import RateLimiter
 
 # Structured logging — swap for structlog or JSON formatter in production.
@@ -36,20 +40,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- In-memory singletons ---
+# Constructed once at module load. Acceptable for v1 (single replica, no persistence).
+quota_store = GPUQuotaStore()
+rate_limiter = RateLimiter()
+k8s = KubernetesClient()
+reconciler = QuotaReconciler(k8s, quota_store)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan: runs startup logic before yield, shutdown logic after.
+
+    We start the quota reconciler here so it has access to the running event
+    loop. @app.on_event("startup") is deprecated in favour of this pattern.
+    """
+    await reconciler.start()
+    yield
+    await reconciler.stop()
+
+
 app = FastAPI(
     title="Runway Control Plane",
     description="AI-infrastructure-aware batch job submission API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Mount Prometheus metrics at /metrics.
 app.mount("/metrics", make_asgi_app())
-
-# --- In-memory singletons ---
-# Constructed once at startup. Acceptable for v1 (single replica, no persistence).
-quota_store = GPUQuotaStore()
-rate_limiter = RateLimiter()
-k8s = KubernetesClient()
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +136,10 @@ def submit_job(spec: JobSpec) -> JobSubmitResponse:
             # otherwise tenants can get stuck due to "phantom" reserved GPUs.
             quota_store.release(spec.tenant_id, spec.gpu_count)
             raise
+
+        # Step 6: Register the job with the reconciler so GPU quota is released
+        # when the job reaches a terminal state (SUCCEEDED / FAILED / DEADLINE).
+        reconciler.register(job_id, spec.tenant_id, spec.gpu_count)
 
     except HTTPException as exc:
         # Prefer machine-readable error codes emitted by admission/quota/rate-limit modules.

@@ -4,6 +4,20 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.3.0] — 2026-02-25
+
+### Added
+- GPU quota reconciler (`quota_reconciler.py`): background async task that polls Kubernetes every 30s and releases in-memory GPU quota when jobs reach a terminal state (SUCCEEDED, FAILED, DEADLINE)
+- `QuotaReconciler.register()` called after successful K8s job submission to begin tracking the job
+- FastAPI `lifespan` context manager in `main.py` replaces deprecated `@app.on_event`; reconciler started/stopped cleanly with the process
+- Job not found in K8s treated as terminal to prevent permanent quota leaks
+
+### Changed
+- `main.py` request flow comment updated to include step 6 (reconciler registration)
+- In-memory singletons moved above `lifespan` definition for clarity
+
+---
+
 ## [0.2.0] — 2026-02-24
 
 ### Added

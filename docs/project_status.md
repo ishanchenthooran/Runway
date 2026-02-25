@@ -1,6 +1,6 @@
 # Project Status — Runway
 
-_Last updated: 2026-02-24_
+_Last updated: 2026-02-25_
 
 ---
 
@@ -22,7 +22,7 @@ Control plane implemented. Functional gaps remain before demo-ready.
 - [x] Observability scaffolded (Prometheus metrics defined, structured logging in place)
 - [x] Rate limiting implemented (fixed-window, per-tenant, `rate_limit.py`)
 - [x] Job failure reason surfaced in status response (OOMKilled, DeadlineExceeded, NonZeroExit)
-- [ ] GPU quota released on job completion
+- [x] GPU quota released on job completion (background reconciler, polling)
 - [ ] Observability stack deployed (Prometheus scraping, Grafana)
 - [ ] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
 
@@ -43,11 +43,11 @@ These are not polish — they affect correctness or completeness of the core flo
 - Prefers container named `"job"`; falls back to first terminated container status.
 - Surfaces `OOMKilled`, `NonZeroExit (exit code N)`, and `DeadlineExceeded`.
 
-### 3. GPU quota never released on job completion
-- `quota.release()` is called correctly on K8s submission failure (rollback path).
-- It is never called when a job finishes or fails in Kubernetes.
-- There is no polling loop or reconciliation mechanism in v1.
-- **Impact:** GPU quota slowly drains to zero and never recovers without a process restart.
+### ~~3. GPU quota never released on job completion~~ ✓ Resolved
+- `QuotaReconciler` added (`quota_reconciler.py`): background async task, polls K8s every 30s.
+- On terminal state (SUCCEEDED, FAILED, DEADLINE): calls `quota.release()` and removes job from tracker.
+- Registered via FastAPI `lifespan`; started/stopped cleanly with the process.
+- `asyncio.to_thread()` used for blocking K8s calls; `asyncio.Lock` guards `_active_jobs` on the async path.
 
 ### 4. No `command` field on `JobSpec`
 - Pods will execute the container image's default `CMD`.

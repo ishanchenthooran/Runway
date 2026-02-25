@@ -12,6 +12,7 @@ Runway is split into two distinct layers:
 - Applying per-tenant rate limiting
 - Performing cost estimation before any K8s resource is created
 - Issuing `batch/v1 Job` manifests to the Kubernetes API
+- Releasing GPU quota when jobs complete via a background reconciliation loop
 - Exposing job status, metrics, and health endpoints
 
 **Data Plane** — Kubernetes primitives responsible for:
@@ -56,7 +57,12 @@ POST /jobs
   │         - backoffLimit from policy defaults
   │       Submit via the kubernetes Python client
   │
-  └─ [5] Response
+  ├─ [5] Reconciler registration
+  │       Call reconciler.register(job_id, tenant_id, gpu_count)
+  │       GPU jobs are added to the background tracker for quota release.
+  │       CPU-only jobs are skipped.
+  │
+  └─ [6] Response
           Return job ID, estimated cost, and initial status to the client
 ```
 
@@ -79,11 +85,9 @@ Admission control runs entirely at the API layer. Kubernetes admission webhooks 
 
 ### Per-tenant GPU quota (in-memory)
 
-The control plane maintains a dict of `tenant_id → gpu_currently_allocated`. On each submission, it checks whether adding the requested `gpu_count` would exceed the tenant's configured quota. On job completion or failure, the counter is decremented.
+The control plane maintains a dict of `tenant_id → gpu_currently_allocated`. On each submission, it checks whether adding the requested `gpu_count` would exceed the tenant's configured quota. The counter is incremented on successful submission, rolled back on K8s submission failure, and released by the `QuotaReconciler` background task when a job reaches a terminal state.
 
-This state is lost on process restart. Kubernetes remains the source of truth for running jobs — on startup, the control plane can optionally reconcile by listing active Jobs in the namespace.
-
-> **v1 limitation:** GPU quota is not yet released on job completion. The counter is decremented on K8s submission failure (rollback path only). A background reconciliation loop is required to release quota on terminal job state — deferred to a future iteration.
+This state is lost on process restart. Kubernetes remains the source of truth for running jobs. On restart, quota counters are reset to zero — active jobs that survive the restart will continue to hold cluster GPUs without being tracked until they complete naturally.
 
 ### Rate limiting (in-memory)
 
@@ -109,10 +113,11 @@ The estimate reflects the worst-case cost if the job runs for its full `timeout`
 
 Runway holds no persistent state. In-memory state consists of:
 
-- Per-tenant GPU allocation counters
-- Per-tenant rate limit windows
+- Per-tenant GPU allocation counters (`quota.py`)
+- Per-tenant rate limit windows (`rate_limit.py`)
+- Active GPU job tracker (`quota_reconciler.py`)
 
-Kubernetes is the authoritative source of truth for job state. The control plane derives job status by querying the K8s API on demand (GET /jobs, GET /jobs/{id}). There is no background reconciliation loop in v1.
+Kubernetes is the authoritative source of truth for job state. The control plane derives job status by querying the K8s API on demand (`GET /jobs/{id}`). A background `QuotaReconciler` task polls Kubernetes every 30 seconds to release GPU quota when jobs complete.
 
 ```
 K8s Job states surfaced by Runway:

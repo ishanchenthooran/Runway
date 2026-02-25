@@ -24,7 +24,7 @@ All enforcement occurs synchronously at the API layer before any Kubernetes reso
 
 **GPU per-job maximum** — `gpu_count` is capped at a configurable limit (e.g., 4). Jobs requesting more GPUs than allowed are rejected regardless of tenant quota.
 
-**Per-tenant GPU quota** — The control plane tracks each tenant's total allocated GPU count in memory. A submission is rejected if `tenant_current_gpus + requested_gpu_count > tenant_quota`. The counter increments on successful submission and is decremented on K8s submission failure (rollback). Decrement on job completion is not yet implemented — see v1 limitations in `docs/project_status.md`.
+**Per-tenant GPU quota** — The control plane tracks each tenant's total allocated GPU count in memory. A submission is rejected if `tenant_current_gpus + requested_gpu_count > tenant_quota`. The counter increments on successful submission, is rolled back on K8s submission failure, and is released by the background quota reconciler when a job reaches a terminal state (see §7 below).
 
 **Runtime cap** — `timeout` is bounded by a configurable maximum. Jobs requesting a longer wall-clock duration are rejected. The value maps directly to `activeDeadlineSeconds` on the K8s Job.
 
@@ -76,7 +76,23 @@ Runway does not implement custom watchdogs, requeue logic, or failure callbacks.
 
 ---
 
-## 6. Observability
+## 6. GPU Quota Reconciliation
+
+GPU quota is reserved at submission time and released by a background reconciliation loop that runs inside the control plane process.
+
+**Mechanism** — On startup, a `QuotaReconciler` async task is created. Every 30 seconds (configurable via `QUOTA_RECONCILER_INTERVAL_S`) it queries Kubernetes for the status of each tracked GPU job. When a job reaches a terminal state (SUCCEEDED, FAILED, or DEADLINE), it calls `quota_store.release()` and removes the job from the tracker.
+
+**Registration** — After a K8s job is successfully created, `reconciler.register(job_id, tenant_id, gpu_count)` is called on the submission path to begin tracking. CPU-only jobs (gpu_count == 0) are never registered — they hold no GPU quota.
+
+**Failure handling** — If a K8s status query fails for a specific job, that job remains tracked and is retried on the next tick. If a job is no longer found in K8s (e.g., manually deleted), it is treated as terminal and quota is released to prevent permanent leaks. An unhandled exception during a full reconcile tick is logged and does not kill the loop.
+
+**Lifecycle** — The reconciler is started and stopped via the FastAPI `lifespan` context manager, ensuring clean shutdown when the process exits.
+
+**v1 trade-off** — A 30-second polling interval means quota is held for up to 30 seconds after a job finishes. This is acceptable for v1. The Kubernetes Watch API would provide lower latency but adds reconnect/resync complexity.
+
+---
+
+## 7. Observability
 
 **Metrics** — The control plane exposes a Prometheus-compatible `/metrics` endpoint. Tracked signals include: job submissions (total), rejections (by reason), failures (by reason), and submission latency. Metrics are not labeled per-tenant in v1.
 
