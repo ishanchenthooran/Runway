@@ -21,7 +21,7 @@ Control plane implemented. Functional gaps remain before demo-ready.
 - [x] Cost estimation implemented (preflight, env-var rates, response field)
 - [x] Observability scaffolded (Prometheus metrics defined, structured logging in place)
 - [x] Rate limiting implemented (fixed-window, per-tenant, `rate_limit.py`)
-- [ ] Job failure reason surfaced in status response
+- [x] Job failure reason surfaced in status response (OOMKilled, DeadlineExceeded, NonZeroExit)
 - [ ] GPU quota released on job completion
 - [ ] Observability stack deployed (Prometheus scraping, Grafana)
 - [ ] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
@@ -37,11 +37,11 @@ These are not polish — they affect correctness or completeness of the core flo
 - `RATE_LIMITED` metric label now emits correctly via existing HTTPException handler.
 - 429 response includes `Retry-After` header and `retry_after_s` body field.
 
-### 2. `failure_reason` never populated
-- `JobStatusResponse` has a `failure_reason: Optional[str]` field.
-- `k8s_client.get_job_status()` detects `FAILED` and `DEADLINE` states but never sets `failure_reason`.
-- Kubernetes surfaces OOMKilled, NonZeroExit, and DeadlineExceeded on pod conditions — none of this is passed back to the caller.
-- **Impact:** users have no signal for why their job failed.
+### ~~2. `failure_reason` never populated~~ ✓ Resolved
+- `_get_pod_failure_reason()` added to `k8s_client.py`.
+- Lists pods by `runway/job-id` label, picks most recently terminated pod.
+- Prefers container named `"job"`; falls back to first terminated container status.
+- Surfaces `OOMKilled`, `NonZeroExit (exit code N)`, and `DeadlineExceeded`.
 
 ### 3. GPU quota never released on job completion
 - `quota.release()` is called correctly on K8s submission failure (rollback path).
