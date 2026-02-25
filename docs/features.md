@@ -24,7 +24,7 @@ All enforcement occurs synchronously at the API layer before any Kubernetes reso
 
 **GPU per-job maximum** — `gpu_count` is capped at a configurable limit (e.g., 4). Jobs requesting more GPUs than allowed are rejected regardless of tenant quota.
 
-**Per-tenant GPU quota** — The control plane tracks each tenant's total allocated GPU count in memory. A submission is rejected if `tenant_current_gpus + requested_gpu_count > tenant_quota`. The counter increments on successful submission and decrements when the job reaches a terminal state.
+**Per-tenant GPU quota** — The control plane tracks each tenant's total allocated GPU count in memory. A submission is rejected if `tenant_current_gpus + requested_gpu_count > tenant_quota`. The counter increments on successful submission and is decremented on K8s submission failure (rollback). Decrement on job completion is not yet implemented — see v1 limitations in `docs/project_status.md`.
 
 **Runtime cap** — `timeout` is bounded by a configurable maximum. Jobs requesting a longer wall-clock duration are rejected. The value maps directly to `activeDeadlineSeconds` on the K8s Job.
 
@@ -32,11 +32,11 @@ All enforcement occurs synchronously at the API layer before any Kubernetes reso
 
 ## 3. Rate Limiting
 
-**Per-tenant submission rate** — Each tenant is subject to a configurable maximum submission rate (e.g., N requests per minute). State is in-memory.
+**Per-tenant submission rate** — Each tenant is subject to a configurable maximum submission rate (default: 10 requests per 60-second window). State is in-memory and lost on restart. Configurable via `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_S` environment variables.
 
-**Burst handling** — A small burst allowance permits short spikes above the steady-state rate. Requests that exceed both the rate and burst are rejected immediately; there is no queueing.
+**Fixed window** — Time is divided into equal windows. The counter resets at the start of each window. There is no burst allowance — the limit is a hard cap per window. Requests exceeding the limit are rejected immediately; there is no queueing.
 
-**Error semantics** — Rate-limited requests return `429 Too Many Requests`. The response body identifies the tenant and the limit that was exceeded.
+**Error semantics** — Rate-limited requests return `429 Too Many Requests`. The response includes a `Retry-After` HTTP header and a `retry_after_s` body field indicating how many seconds remain until the window resets.
 
 ---
 
@@ -64,9 +64,11 @@ Runway delegates all retry logic to Kubernetes.
 
 **`backoffLimit`** — Set on the K8s Job manifest to a policy default. Kubernetes retries failed Pods up to this count with exponential backoff before marking the Job Failed.
 
-**OOMKilled** — When a container exceeds its memory limit, the Linux kernel terminates it. Kubernetes records the exit reason as `OOMKilled`. This counts against `backoffLimit`. Runway surfaces this reason in the job status response.
+**OOMKilled** — When a container exceeds its memory limit, the Linux kernel terminates it. Kubernetes records the exit reason as `OOMKilled`. This counts against `backoffLimit`. Runway will surface this reason in the `failure_reason` field of the job status response.
 
-**Deadline exceeded** — When `activeDeadlineSeconds` elapses, Kubernetes terminates all Pods and marks the Job Failed with reason `DeadlineExceeded`. This is not retried regardless of `backoffLimit`. Runway surfaces this reason in the job status response.
+**Deadline exceeded** — When `activeDeadlineSeconds` elapses, Kubernetes terminates all Pods and marks the Job Failed with reason `DeadlineExceeded`. This is not retried regardless of `backoffLimit`. Runway will surface this reason in the `failure_reason` field of the job status response.
+
+> **v1 status:** `failure_reason` is defined in the response schema but not yet populated. Surfacing pod-level failure signals (OOMKilled, NonZeroExit, DeadlineExceeded) from the K8s API is in progress.
 
 Runway does not implement custom watchdogs, requeue logic, or failure callbacks.
 

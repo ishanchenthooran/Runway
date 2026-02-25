@@ -83,9 +83,11 @@ The control plane maintains a dict of `tenant_id → gpu_currently_allocated`. O
 
 This state is lost on process restart. Kubernetes remains the source of truth for running jobs — on startup, the control plane can optionally reconcile by listing active Jobs in the namespace.
 
+> **v1 limitation:** GPU quota is not yet released on job completion. The counter is decremented on K8s submission failure (rollback path only). A background reconciliation loop is required to release quota on terminal job state — deferred to a future iteration.
+
 ### Rate limiting (in-memory)
 
-Per-tenant submission rate is enforced using a sliding window or token bucket. Tenants are identified by a header (`X-Tenant-ID`) or request body field — no authentication backs this in v1. Rate limit state is in-process and lost on restart.
+Per-tenant submission rate is enforced using a fixed window. Tenants are identified by the `tenant_id` request body field — no authentication backs this in v1. Rate limit state is in-process and lost on restart. Rejected requests return HTTP 429 with a `Retry-After` header indicating seconds until the window resets.
 
 ---
 

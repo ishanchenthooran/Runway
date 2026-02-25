@@ -119,29 +119,20 @@ and explain why Kubernetes admission webhooks are out of scope for v1.
 
 ## 7. Repository Etiquette & Git Workflow
 
-Claude must follow these repository rules:
+This is a solo project. No PRs or code review required.
 
 ### Branching
-- Never push directly to `main`
-- All changes must go through a feature branch
-- Branch naming:
+- Feature branches are optional but encouraged for non-trivial changes
+- Direct commits to `main` are allowed
+- Branch naming convention (when used):
   - `feat/<short-description>`
   - `fix/<short-description>`
   - `docs/<short-description>`
   - `infra/<short-description>`
 
-### Pull Requests
-- Claude should assume all non-trivial changes go through PRs
-- PRs should include:
-  - clear summary
-  - motivation
-  - trade-offs
-  - what was intentionally left out
-
-Claude should ask:
-> “Should this be a PR or a local change?”
-
-before proposing multi-file changes.
+### Commits
+- Commit directly to `main` or merge a feature branch locally before pushing
+- No need to push feature branches to remote unless explicitly requested
 
 ---
 

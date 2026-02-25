@@ -1,6 +1,6 @@
 # Project Status — Runway
 
-_Last updated: 2026-02-22_
+_Last updated: 2026-02-24_
 
 ---
 
@@ -20,7 +20,7 @@ Control plane implemented. Functional gaps remain before demo-ready.
 - [x] GPU quota enforcement (in-memory counter, admission rejection)
 - [x] Cost estimation implemented (preflight, env-var rates, response field)
 - [x] Observability scaffolded (Prometheus metrics defined, structured logging in place)
-- [ ] Rate limiting implemented (module referenced but not yet written)
+- [x] Rate limiting implemented (fixed-window, per-tenant, `rate_limit.py`)
 - [ ] Job failure reason surfaced in status response
 - [ ] GPU quota released on job completion
 - [ ] Observability stack deployed (Prometheus scraping, Grafana)
@@ -32,10 +32,10 @@ Control plane implemented. Functional gaps remain before demo-ready.
 
 These are not polish — they affect correctness or completeness of the core flow.
 
-### 1. Rate limiting not implemented
-- `admission.py` and `metrics.py` reference rate limiting, but no `rate_limit.py` exists.
-- A `RATE_LIMITED` rejection reason is referenced in metrics but never emitted.
-- **Impact:** per-tenant rate limiting is entirely absent.
+### ~~1. Rate limiting not implemented~~ ✓ Resolved
+- `rate_limit.py` implemented: fixed-window, per-tenant, thread-safe.
+- `RATE_LIMITED` metric label now emits correctly via existing HTTPException handler.
+- 429 response includes `Retry-After` header and `retry_after_s` body field.
 
 ### 2. `failure_reason` never populated
 - `JobStatusResponse` has a `failure_reason: Optional[str]` field.
