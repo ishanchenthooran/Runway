@@ -64,11 +64,13 @@ Runway delegates all retry logic to Kubernetes.
 
 **`backoffLimit`** — Set on the K8s Job manifest to a policy default. Kubernetes retries failed Pods up to this count with exponential backoff before marking the Job Failed.
 
-**OOMKilled** — When a container exceeds its memory limit, the Linux kernel terminates it. Kubernetes records the exit reason as `OOMKilled`. This counts against `backoffLimit`. Runway will surface this reason in the `failure_reason` field of the job status response.
+**OOMKilled** — When a container exceeds its memory limit, the Linux kernel terminates it. Kubernetes records the exit reason as `OOMKilled`. This counts against `backoffLimit`. Runway surfaces this reason in the `failure_reason` field of the job status response.
 
-**Deadline exceeded** — When `activeDeadlineSeconds` elapses, Kubernetes terminates all Pods and marks the Job Failed with reason `DeadlineExceeded`. This is not retried regardless of `backoffLimit`. Runway will surface this reason in the `failure_reason` field of the job status response.
+**Deadline exceeded** — When `activeDeadlineSeconds` elapses, Kubernetes terminates all Pods and marks the Job Failed with reason `DeadlineExceeded`. This is not retried regardless of `backoffLimit`. Runway surfaces this reason in the `failure_reason` field of the job status response.
 
-> **v1 status:** `failure_reason` is defined in the response schema but not yet populated. Surfacing pod-level failure signals (OOMKilled, NonZeroExit, DeadlineExceeded) from the K8s API is in progress.
+**Non-zero exit** — Application-level failures are captured by K8s Job failure semantics. Runway surfaces these as `NonZeroExit (exit code N)` in the `failure_reason` field.
+
+`failure_reason` is derived by listing pods for the job via the `runway/job-id` label, picking the most recently terminated pod, and inspecting the container status. The container named `"job"` is preferred; other containers are used as fallback.
 
 Runway does not implement custom watchdogs, requeue logic, or failure callbacks.
 

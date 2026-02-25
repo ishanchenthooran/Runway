@@ -173,10 +173,19 @@ Runway/
 │   └── changelog.md         # Historical changes
 │
 ├── services/
-│   └── runway-api/          # FastAPI control plane (to be implemented)
+│   └── runway-api/          # FastAPI control plane
+│       ├── main.py          # Routes and app entrypoint
+│       ├── models.py        # Pydantic request/response schemas
+│       ├── admission.py     # Resource bounds validation
+│       ├── quota.py         # Per-tenant GPU quota enforcement
+│       ├── rate_limit.py    # Per-tenant fixed-window rate limiting
+│       ├── cost.py          # Preflight cost estimation
+│       ├── k8s_client.py    # Kubernetes Job creation and status
+│       ├── metrics.py       # Prometheus metrics definitions
+│       └── requirements.txt
 │
 ├── infra/
-│   └── terraform/           # AWS + EKS infrastructure (to be implemented)
+│   └── terraform/           # AWS + EKS infrastructure (in progress)
 │
 ├── CLAUDE.md                # AI collaboration rules and constraints
 └── README.md                # Project overview
@@ -195,9 +204,8 @@ Runway/
 ---
 
 ### Status
-Runway is currently in early development.
-- Documentation defined
-- Architecture locked
-- AI-infrastructure pivot complete
-- Control plane scaffold in progress
-See docs/project_status.md for roadmap.
+The control plane is implemented and functional.
+- All core features complete: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
+- Observability scaffolded (Prometheus metrics, structured logging)
+- Remaining: GPU quota release on job completion, observability stack deployed, EKS provisioning
+See `docs/project_status.md` for full milestone tracking.
