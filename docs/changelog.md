@@ -4,6 +4,16 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.4.0] — 2026-02-26
+
+### Added
+- `command: Optional[list[str]]` field on `JobSpec`: overrides the container entrypoint (`container.command` in K8s, equivalent to Docker `ENTRYPOINT`)
+- `args: Optional[list[str]]` field on `JobSpec`: overrides the container arguments (`container.args` in K8s, equivalent to Docker `CMD`)
+- Both fields wired into `V1Container` in `k8s_client.py`; Kubernetes accepts `None` so no conditional branching required
+- `command` and `args` added to structured log output on job creation
+
+---
+
 ## [0.3.0] — 2026-02-25
 
 ### Added

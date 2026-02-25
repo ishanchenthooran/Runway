@@ -89,6 +89,22 @@ class JobSpec(BaseModel):
         description="Caller-supplied tenant identifier (unauthenticated in v1)",
     )
 
+    command: Optional[list[str]] = Field(
+        None,
+        description=(
+            "Override the container entrypoint (maps to Kubernetes container.command, "
+            "which overrides the Docker ENTRYPOINT). If omitted, the image default is used."
+        ),
+    )
+
+    args: Optional[list[str]] = Field(
+        None,
+        description=(
+            "Override the container arguments (maps to Kubernetes container.args, "
+            "which overrides the Docker CMD). If omitted, the image default is used."
+        ),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Job submission response

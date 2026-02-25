@@ -49,10 +49,10 @@ These are not polish — they affect correctness or completeness of the core flo
 - Registered via FastAPI `lifespan`; started/stopped cleanly with the process.
 - `asyncio.to_thread()` used for blocking K8s calls; `asyncio.Lock` guards `_active_jobs` on the async path.
 
-### 4. No `command` field on `JobSpec`
-- Pods will execute the container image's default `CMD`.
-- Acceptable for demo if images have sensible defaults, but limits flexibility.
-- **Impact:** low — callers cannot specify what the container runs.
+### ~~4. No `command` field on `JobSpec`~~ ✓ Resolved
+- `command: Optional[list[str]]` and `args: Optional[list[str]]` added to `JobSpec`.
+- `command` overrides Docker `ENTRYPOINT` (maps to `container.command`); `args` overrides Docker `CMD` (maps to `container.args`).
+- Both are optional; omitting either preserves the image default.
 
 ---
 

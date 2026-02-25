@@ -61,6 +61,8 @@ class KubernetesClient:
         container = client.V1Container(
             name="job",
             image=spec.image,
+            command=spec.command,
+            args=spec.args,
             resources=client.V1ResourceRequirements(
                 requests=requests,
                 limits=limits,
@@ -110,6 +112,8 @@ class KubernetesClient:
                 "memory_mb": spec.memory_mb,
                 "gpu_count": spec.gpu_count,
                 "timeout_s": spec.timeout_s,
+                "command": spec.command,
+                "args": spec.args,
             },
         )
 

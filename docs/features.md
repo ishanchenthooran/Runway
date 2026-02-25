@@ -8,7 +8,9 @@ Behavioral reference for Runway's core features. See `docs/project_spec.md` for 
 
 **Endpoint:** `POST /jobs`
 
-Callers provide: container image, CPU request, memory request, timeout (wall-clock seconds), and optionally `gpu_count`. A `tenant_id` identifies the submitting team.
+Callers provide: container image, CPU request, memory request, timeout (wall-clock seconds), and optionally `gpu_count`, `command`, and `args`. A `tenant_id` identifies the submitting team.
+
+**`command` and `args`** — Optional fields that override the container's entrypoint and arguments respectively, following Kubernetes semantics: `command` maps to `container.command` (overrides Docker `ENTRYPOINT`); `args` maps to `container.args` (overrides Docker `CMD`). Either can be set independently. If omitted, the image's defaults are used.
 
 Runway controls: the Kubernetes Job manifest, resource limits, GPU resource binding, retry count, and deadline. Callers cannot set `backoffLimit`, `activeDeadlineSeconds`, or raw K8s fields directly — these are derived from the validated spec and policy defaults.
 
