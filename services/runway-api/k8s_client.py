@@ -113,7 +113,7 @@ class KubernetesClient:
                 "gpu_count": spec.gpu_count,
                 "timeout_s": spec.timeout_s,
                 "command": spec.command,
-                "args": spec.args,
+                "container_args": spec.args,
             },
         )
 

@@ -4,6 +4,13 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.4.1] — 2026-02-26
+
+### Fixed
+- Renamed structured log key `"args"` → `"container_args"` in `k8s_client.py`; `args` is a reserved `LogRecord` field in Python's `logging` module and caused a `KeyError` on every job submission
+
+---
+
 ## [0.4.0] — 2026-02-26
 
 ### Added
@@ -11,6 +18,7 @@ All notable changes to Runway are documented here.
 - `args: Optional[list[str]]` field on `JobSpec`: overrides the container arguments (`container.args` in K8s, equivalent to Docker `CMD`)
 - Both fields wired into `V1Container` in `k8s_client.py`; Kubernetes accepts `None` so no conditional branching required
 - `command` and `args` added to structured log output on job creation
+- End-to-end smoke test completed: job submission → K8s Job created in `runway-jobs` namespace → status polled successfully
 
 ---
 

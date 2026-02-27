@@ -1,6 +1,6 @@
 # Project Status — Runway
 
-_Last updated: 2026-02-25_
+_Last updated: 2026-02-26_
 
 ---
 
@@ -24,6 +24,7 @@ Control plane implemented. Functional gaps remain before demo-ready.
 - [x] Job failure reason surfaced in status response (OOMKilled, DeadlineExceeded, NonZeroExit)
 - [x] GPU quota released on job completion (background reconciler, polling)
 - [ ] Observability stack deployed (Prometheus scraping, Grafana)
+- [x] End-to-end smoke test passed (job submission → K8s Job created → status polled successfully)
 - [ ] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
 
 ---
