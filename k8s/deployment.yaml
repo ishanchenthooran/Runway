@@ -1,0 +1,194 @@
+# ---------------------------------------------------------------------------
+# Runway — Kubernetes Manifests
+#
+# Apply:  kubectl apply -f k8s/deployment.yaml
+# Delete: kubectl delete -f k8s/deployment.yaml
+#
+# BEFORE APPLYING: replace the image field below with your ECR URI.
+# Build and push steps are in ROADMAP_LOCAL.md (Feb 28).
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Namespaces
+# ---------------------------------------------------------------------------
+
+# runway: where the control plane (runway-api) lives.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: runway
+
+---
+
+# runway-jobs: where batch Jobs submitted by the control plane are created.
+# Kept separate so Job workloads don't share a namespace with infra pods.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: runway-jobs
+
+---
+
+# ---------------------------------------------------------------------------
+# RBAC
+#
+# The runway-api pod needs to call the Kubernetes API to:
+#   - Create batch/v1 Jobs in runway-jobs
+#   - Read Job status and list Pods in runway-jobs (for failure_reason)
+#
+# How K8s auth works inside a pod:
+#   The ServiceAccount token is auto-mounted at:
+#     /var/run/secrets/kubernetes.io/serviceaccount/token
+#   k8s_client.py calls config.load_incluster_config() to pick this up.
+#   Without the Role/RoleBinding below, every API call would return 403.
+# ---------------------------------------------------------------------------
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: runway-api
+  namespace: runway
+
+---
+
+# Role: scoped to the runway-jobs namespace only.
+# Follows least-privilege — the control plane has no access outside runway-jobs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: runway-api
+  namespace: runway-jobs
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+
+# RoleBinding: grants the ServiceAccount (in the runway namespace) the Role
+# (in the runway-jobs namespace). Cross-namespace binding is allowed by K8s —
+# the subject references the namespace the ServiceAccount lives in.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: runway-api
+  namespace: runway-jobs
+subjects:
+  - kind: ServiceAccount
+    name: runway-api
+    namespace: runway
+roleRef:
+  kind: Role
+  name: runway-api
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+# ---------------------------------------------------------------------------
+# Deployment
+# ---------------------------------------------------------------------------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runway-api
+  namespace: runway
+  labels:
+    app: runway-api
+spec:
+  replicas: 1  # Single replica by design (v1). See docs/project_status.md.
+  selector:
+    matchLabels:
+      app: runway-api
+  template:
+    metadata:
+      labels:
+        app: runway-api
+    spec:
+      serviceAccountName: runway-api  # Mount the RBAC-bound token.
+
+      containers:
+        - name: runway-api
+          # REPLACE with your ECR URI before applying.
+          # Example: 123456789012.dkr.ecr.ca-central-1.amazonaws.com/runway-api:latest
+          image: YOUR_ECR_URI/runway-api:latest
+
+          # Always pull — ensures the node uses the latest pushed image.
+          # Safe for a demo; for production you'd pin a digest instead of :latest.
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+
+          env:
+            - name: K8S_JOB_NAMESPACE
+              value: "runway-jobs"
+            - name: K8S_BACKOFF_LIMIT
+              value: "2"
+            - name: TENANT_GPU_QUOTA
+              value: "8"
+            - name: RATE_LIMIT_REQUESTS
+              value: "10"
+            - name: RATE_LIMIT_WINDOW_S
+              value: "60"
+            - name: QUOTA_RECONCILER_INTERVAL_S
+              value: "30"
+            # Cost rates (static; not tied to real AWS billing in v1)
+            - name: COST_CPU_PER_CPU_SECOND
+              value: "0.000048"
+            - name: COST_MEMORY_PER_GB_SECOND
+              value: "0.000006"
+            - name: COST_GPU_PER_GPU_SECOND
+              value: "0.00028"
+
+          # Liveness probe: K8s restarts the pod if /healthz stops responding.
+          # Uses the same endpoint we expose in main.py — intentionally lightweight
+          # (no K8s calls inside healthz, just returns {"status": "ok"}).
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          # Resource limits for the control plane pod itself.
+          # It's a lightweight FastAPI process — no GPU, minimal CPU/memory.
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+---
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+
+# LoadBalancer: EKS provisions an AWS Classic/NLB, giving an external IP.
+# This lets you curl the API directly without kubectl port-forward.
+#
+# After applying, run:
+#   kubectl get svc runway-api -n runway
+# The EXTERNAL-IP column will show the AWS load balancer hostname once ready
+# (takes ~1-2 min to provision).
+apiVersion: v1
+kind: Service
+metadata:
+  name: runway-api
+  namespace: runway
+  labels:
+    app: runway-api
+spec:
+  type: LoadBalancer
+  selector:
+    app: runway-api
+  ports:
+    - name: http
+      port: 80        # External port (what you hit from outside)
+      targetPort: 8000  # Container port (where uvicorn listens)
