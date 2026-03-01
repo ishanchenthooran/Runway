@@ -1,6 +1,16 @@
 # Local personal files — not tracked in remote
 ROADMAP_LOCAL.md
 
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
+
+# Terraform crash logs
+crash.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

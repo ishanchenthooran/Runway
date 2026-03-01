@@ -4,6 +4,18 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.5.0] — 2026-03-01
+
+### Added
+- Terraform infrastructure scaffold (`infra/terraform/`): provisions VPC + EKS cluster on AWS (ca-central-1)
+  - `providers.tf`: AWS provider pinned to `~> 5.0`; `default_tags` wires shared tags to all resources
+  - `variables.tf`: region, cluster name, Kubernetes version, VPC CIDR, AZ count, node sizing, tags
+  - `main.tf`: VPC module (private/public subnets, single NAT gateway); EKS module (managed node group, public API endpoint)
+  - `outputs.tf`: cluster name, endpoint, region, `aws eks update-kubeconfig` command
+- EKS cluster `runway` live in `ca-central-1` with 2× t3.micro worker nodes
+
+---
+
 ## [0.4.1] — 2026-02-26
 
 ### Fixed
