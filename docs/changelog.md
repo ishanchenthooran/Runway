@@ -4,6 +4,27 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.7.0] — 2026-03-03
+
+### Added
+- `kube-prometheus-stack` installed via Helm into `monitoring` namespace on EKS cluster `runway`
+- Prometheus, Alertmanager, Grafana, kube-state-metrics, and node-exporter all running in `monitoring` namespace
+- Grafana accessible via port-forward (`kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring`); ships pre-built K8s cluster and node dashboards
+- Prometheus accessible via port-forward on port 9090; scraping cluster-level targets (node-exporter, kube-state-metrics)
+- Runway API metrics (`/metrics`) not yet wired — ServiceMonitor targeting `runway-api` is next (Mar 3)
+
+---
+
+## [0.6.0] — 2026-03-02
+
+### Added
+- `services/runway-api/Dockerfile`: multi-stage Python image; copies source, installs deps from `requirements.txt`, runs uvicorn on port 8000
+- `k8s/deployment.yaml`: full control plane manifest — namespaces (`runway`, `runway-jobs`), ServiceAccount, least-privilege Role/RoleBinding scoped to `runway-jobs`, Deployment with liveness probe and resource limits, LoadBalancer Service
+- Control plane image built, pushed to ECR (`ca-central-1`), and deployed to EKS cluster `runway`
+- `/healthz` confirmed reachable via AWS load balancer external hostname
+
+---
+
 ## [0.5.0] — 2026-03-01
 
 ### Added

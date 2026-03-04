@@ -114,7 +114,7 @@ spec:
         - name: runway-api
           # REPLACE with your ECR URI before applying.
           # Example: 123456789012.dkr.ecr.ca-central-1.amazonaws.com/runway-api:latest
-          image: YOUR_ECR_URI/runway-api:latest
+          image: 629061775296.dkr.ecr.ca-central-1.amazonaws.com/runway-api:latest
 
           # Always pull — ensures the node uses the latest pushed image.
           # Safe for a demo; for production you'd pin a digest instead of :latest.
@@ -185,7 +185,7 @@ metadata:
   labels:
     app: runway-api
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: runway-api
   ports:

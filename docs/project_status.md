@@ -1,12 +1,12 @@
 # Project Status — Runway
 
-_Last updated: 2026-03-01_
+_Last updated: 2026-03-02_
 
 ---
 
 ## Project Phase
 
-Control plane implemented. Functional gaps remain before demo-ready.
+Control plane live on EKS. All functional gaps resolved. Observability stack and demo prep remaining.
 
 ---
 
