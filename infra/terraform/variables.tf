@@ -36,7 +36,7 @@ variable "az_count" {
 variable "node_instance_type" {
   description = "EC2 instance type for worker nodes. CPU-only; GPU nodes are out of scope for v1."
   type        = string
-  default     = "t3.micro"
+  default     = "t3.medium"
 }
 
 variable "node_desired_count" {

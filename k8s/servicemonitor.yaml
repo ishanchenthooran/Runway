@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# ServiceMonitor — runway-api Prometheus scrape config
+#
+# This is a Prometheus Operator CRD (installed by kube-prometheus-stack).
+# It tells Prometheus to scrape the runway-api Service's /metrics endpoint.
+#
+# How discovery works:
+#   The Prometheus Operator watches ServiceMonitor resources cluster-wide.
+#   It translates each ServiceMonitor into a scrape job in Prometheus's
+#   internal config — no static scrape_configs needed.
+#
+# Port wiring:
+#   ServiceMonitor targets port "http" (port 80 on the Service) which
+#   proxies to containerPort 8000 where uvicorn exposes /metrics.
+#   The named-port reference is more stable than a raw port number.
+#
+# Namespace selector:
+#   Explicitly scoped to the "runway" namespace so Prometheus only
+#   considers Services there. Prevents accidental cross-namespace matches.
+#
+# Apply:  kubectl apply -f k8s/servicemonitor.yaml
+# Delete: kubectl delete -f k8s/servicemonitor.yaml
+# ---------------------------------------------------------------------------
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: runway-api
+  namespace: runway
+spec:
+  selector:
+    matchLabels:
+      app: runway-api   # Must match the labels on the runway-api Service
+  endpoints:
+    - port: http        # Named port from the Service (port 80 → containerPort 8000)
+      path: /metrics
+      interval: 15s    # Scrape every 15s — low enough for demo visibility
+  namespaceSelector:
+    matchNames:
+      - runway
