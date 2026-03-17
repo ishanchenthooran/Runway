@@ -4,6 +4,22 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.8.0] — 2026-03-17
+
+### Added
+- Observability stack deployed on local kind cluster (`runway`)
+- `kube-prometheus-stack` installed via Helm into `monitoring` namespace
+- `k8s/servicemonitor.yaml` applied — Prometheus now scrapes `runway-api` at 15s intervals
+- `runway_job_submissions_total` confirmed incrementing in Prometheus after live job submission
+- Grafana accessible via port-forward on port 3000; Prometheus data source pre-configured
+
+### Changed
+- Runtime target switched from EKS to local kind cluster — same manifests, `imagePullPolicy: Never`, image loaded via `kind load docker-image`
+- `k8s/deployment.yaml` updated: image source is local, no ECR required for local dev
+- Terraform in `infra/terraform/` retained as production EKS IaC reference (not active)
+
+---
+
 ## [0.7.0] — 2026-03-03
 
 ### Added

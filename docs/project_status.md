@@ -1,12 +1,12 @@
 # Project Status — Runway
 
-_Last updated: 2026-03-02_
+_Last updated: 2026-03-17_
 
 ---
 
 ## Project Phase
 
-Control plane live on EKS. All functional gaps resolved. Observability stack and demo prep remaining.
+All functional work complete. Observability stack live on kind. Demo prep remaining.
 
 ---
 
@@ -25,7 +25,7 @@ Control plane live on EKS. All functional gaps resolved. Observability stack and
 - [x] GPU quota released on job completion (background reconciler, polling)
 - [x] EKS cluster provisioned via Terraform (VPC, managed node group, ca-central-1)
 - [x] Control plane deployed to EKS (Dockerfile + K8s Deployment + Service)
-- [ ] Observability stack deployed (Prometheus scraping, Grafana)
+- [x] Observability stack deployed (Prometheus scraping, Grafana)
 - [x] End-to-end smoke test passed (job submission → K8s Job created → status polled successfully)
 - [ ] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
 
