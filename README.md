@@ -1,6 +1,6 @@
 # Runway 🛫
 
-Runway is a Kubernetes-native, AI-infrastructure-aware control plane that validates, rate-limits, and cost-estimates batch and ML workloads before submitting them to a shared AWS EKS cluster.
+Runway is a Kubernetes-native, AI-infrastructure-aware control plane that validates, rate-limits, and cost-estimates batch and ML workloads before submitting them to a shared cluster.
 
 It enforces GPU quotas, runtime caps, and resource bounds to prevent runaway training jobs and GPU starvation, while remaining minimal, Kubernetes-native, and production-inspired.
 
@@ -24,20 +24,6 @@ Runway does **not** implement a scheduler, queue, or workflow engine.
 
 ---
 
-## What Runway Is Not
-
-- ❌ Not a workflow/DAG engine
-- ❌ Not a model tracking platform
-- ❌ No authentication / RBAC in v1
-- ❌ No persistent database
-- ❌ No async job queue
-- ❌ No multi-cluster or multi-region support
-- ❌ No production HA guarantees
-
-Runway is **production-inspired**, not production-hardened.
-
----
-
 ## Architecture Overview
 
 Runway follows a strict **control-plane / data-plane separation**.
@@ -58,7 +44,7 @@ Responsibilities:
 
 ### Data Plane
 
-Runway delegates execution entirely to Kubernetes (EKS).
+Runway delegates execution entirely to Kubernetes (kind locally; EKS in production).
 
 Kubernetes responsibilities:
 
@@ -91,6 +77,8 @@ Users submit a minimal `JobSpec`:
 - `gpu_count` (optional)
 - `timeout_s`
 - `tenant_id`
+- `command` (optional — overrides Docker `ENTRYPOINT`)
+- `args` (optional — overrides Docker `CMD`)
 
 Runway:
 
@@ -174,18 +162,23 @@ Runway/
 │
 ├── services/
 │   └── runway-api/          # FastAPI control plane
-│       ├── main.py          # Routes and app entrypoint
+│       ├── main.py          # Routes, app entrypoint, lifespan wiring
 │       ├── models.py        # Pydantic request/response schemas
 │       ├── admission.py     # Resource bounds validation
 │       ├── quota.py         # Per-tenant GPU quota enforcement
+│       ├── quota_reconciler.py  # Background async loop — quota release on job completion
 │       ├── rate_limit.py    # Per-tenant fixed-window rate limiting
 │       ├── cost.py          # Preflight cost estimation
-│       ├── k8s_client.py    # Kubernetes Job creation and status
+│       ├── k8s_client.py    # Kubernetes Job creation, status, failure reason
 │       ├── metrics.py       # Prometheus metrics definitions
 │       └── requirements.txt
 │
+├── k8s/
+│   ├── deployment.yaml      # Runway API Deployment + Service
+│   └── servicemonitor.yaml  # Prometheus ServiceMonitor
+│
 ├── infra/
-│   └── terraform/           # AWS + EKS infrastructure (in progress)
+│   └── terraform/           # EKS production IaC reference (not active locally)
 │
 ├── CLAUDE.md                # AI collaboration rules and constraints
 └── README.md                # Project overview
@@ -204,8 +197,10 @@ Runway/
 ---
 
 ### Status
-The control plane is implemented and functional.
-- All core features complete: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
-- Observability scaffolded (Prometheus metrics, structured logging)
-- Remaining: GPU quota release on job completion, observability stack deployed, EKS provisioning
+All functional work is complete.
+- Control plane implemented: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
+- GPU quota reconciler live (background async poll, releases quota on job completion)
+- Observability scaffolded (Prometheus metrics, structured logging); observability stack deployment in progress
+- Runtime target: kind (local); EKS Terraform in `infra/terraform/` as production IaC reference
+
 See `docs/project_status.md` for full milestone tracking.
