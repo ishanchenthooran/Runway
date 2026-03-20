@@ -1,12 +1,12 @@
 # Project Status — Runway
 
-_Last updated: 2026-03-17_
+_Last updated: 2026-03-20_
 
 ---
 
 ## Project Phase
 
-All functional work complete. Observability stack live on kind. Demo prep remaining.
+All functional work complete. Observability stack live. Demo scenarios validated end-to-end. Scale analysis and resume bullets remaining.
 
 ---
 
@@ -27,7 +27,9 @@ All functional work complete. Observability stack live on kind. Demo prep remain
 - [x] Control plane deployed to EKS (Dockerfile + K8s Deployment + Service)
 - [x] Observability stack deployed (Prometheus scraping, Grafana)
 - [x] End-to-end smoke test passed (job submission → K8s Job created → status polled successfully)
-- [ ] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
+- [x] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
+- [x] Grafana dashboard created (submission rate, rejections by reason, p50/p99 latency, failures by reason)
+- [x] All 4 demo scenarios validated end-to-end on kind (happy path, OOMKilled, GPU quota rejection, rate limit)
 
 ---
 

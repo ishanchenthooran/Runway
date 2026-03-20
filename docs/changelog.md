@@ -4,6 +4,15 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [0.9.0] — 2026-03-20
+
+### Added
+- Grafana dashboard (`docs/grafana_dashboard.json`): 4 panels — job submission rate, rejections by reason (stacked), submission latency p50/p99 with 500ms SLO line, job failures by reason (stacked)
+- Demo script (`docs/demo_script.md`): 4 scenarios with exact curl commands, expected outputs, and Grafana callouts — gitignored as local artifact
+- All 4 demo scenarios validated end-to-end on kind cluster: happy path, OOMKilled, GPU quota rejection, rate limit
+
+---
+
 ## [0.8.0] — 2026-03-17
 
 ### Added
