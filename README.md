@@ -158,7 +158,10 @@ Runway/
 │   ├── architecture.md      # System design and rationale
 │   ├── features.md          # Feature inventory and behavior
 │   ├── project_status.md    # Milestones and progress
-│   └── changelog.md         # Historical changes
+│   ├── changelog.md         # Historical changes
+│   ├── scale_analysis.md    # Failure modes and v2 design at 10x load
+│   ├── grafana_dashboard.json  # Grafana dashboard export
+│   └── demo_script.md       # 4-scenario walkthrough with curl commands
 │
 ├── services/
 │   └── runway-api/          # FastAPI control plane
@@ -197,10 +200,13 @@ Runway/
 ---
 
 ### Status
-All functional work is complete.
-- Control plane implemented: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
-- GPU quota reconciler live (background async poll, releases quota on job completion)
-- Observability scaffolded (Prometheus metrics, structured logging); observability stack deployment in progress
+
+All functional work complete (v0.9.0).
+
+- Control plane: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
+- GPU quota reconciler: background async poll, releases quota on terminal job state
+- Observability stack live: Prometheus scraping runway-api (ServiceMonitor), Grafana dashboard with 4 panels
+- All 4 demo scenarios validated end-to-end on kind: happy path, OOMKilled, GPU quota rejection, rate limit
 - Runtime target: kind (local); EKS Terraform in `infra/terraform/` as production IaC reference
 
 See `docs/project_status.md` for full milestone tracking.

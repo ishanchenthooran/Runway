@@ -1,12 +1,12 @@
 # Project Status — Runway
 
-_Last updated: 2026-03-20_
+_Last updated: 2026-04-02_
 
 ---
 
 ## Project Phase
 
-All functional work complete. Observability stack live. Demo scenarios validated end-to-end. Scale analysis and resume bullets remaining.
+v0.9.0 complete. All original milestones done. Phase 5 in progress: AI Diagnostics Agent — agentic `GET /jobs/{id}/diagnose` endpoint backed by Claude API tool use.
 
 ---
 
@@ -30,6 +30,13 @@ All functional work complete. Observability stack live. Demo scenarios validated
 - [x] Demo-ready build (end-to-end submission flow, failure surfaces, cost output)
 - [x] Grafana dashboard created (submission rate, rejections by reason, p50/p99 latency, failures by reason)
 - [x] All 4 demo scenarios validated end-to-end on kind (happy path, OOMKilled, GPU quota rejection, rate limit)
+- [x] Scale analysis written (`docs/scale_analysis.md`)
+- [x] Demo script written (`docs/demo_script.md`)
+- [ ] **Phase 5: AI Diagnostics Agent** — `GET /jobs/{id}/diagnose` using Claude API tool use
+  - [ ] `services/runway-api/diagnostics.py` — agent loop, tool definitions, agentic loop
+  - [ ] Route wired into `main.py`
+  - [ ] `runway_diagnoses_total` Prometheus metric
+  - [ ] Demo scenario E: OOMKilled → diagnose → remediated resubmit
 
 ---
 
