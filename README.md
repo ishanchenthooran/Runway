@@ -209,4 +209,3 @@ All functional work complete (v0.9.0).
 - All 4 demo scenarios validated end-to-end on kind: happy path, OOMKilled, GPU quota rejection, rate limit
 - Runtime target: kind (local); EKS Terraform in `infra/terraform/` as production IaC reference
 
-See `docs/project_status.md` for full milestone tracking.

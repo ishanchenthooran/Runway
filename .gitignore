@@ -1,5 +1,6 @@
 # Local personal files — not tracked in remote
 ROADMAP_LOCAL.md
+docs/project_status.md
 
 # Terraform
 **/.terraform/
