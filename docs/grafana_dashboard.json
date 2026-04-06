@@ -91,7 +91,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "rejections / sec",
+            "axisLabel": "rejections (5m window)",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "bars",
@@ -114,7 +114,7 @@
               { "color": "red", "value": null }
             ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -127,13 +127,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "rate(runway_job_rejections_total[1m])",
+          "expr": "increase(runway_job_rejections_total[5m])",
           "legendFormat": "{{reason}}",
           "refId": "A"
         }
       ],
       "title": "Job Rejections by Reason",
-      "description": "rate(runway_job_rejections_total[1m]) broken down by reason label. Reasons: GPU_QUOTA_EXCEEDED, RATE_LIMITED, CPU_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, TIMEOUT_LIMIT_EXCEEDED.",
+      "description": "increase(runway_job_rejections_total[5m]) broken down by reason label. Reasons: GPU_QUOTA_EXCEEDED, RATE_LIMITED, CPU_LIMIT_EXCEEDED, MEMORY_LIMIT_EXCEEDED, TIMEOUT_LIMIT_EXCEEDED.",
       "type": "timeseries"
     },
     {
