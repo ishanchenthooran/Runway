@@ -210,7 +210,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "failures / sec",
+            "axisLabel": "failures (5m window)",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "bars",
@@ -233,7 +233,7 @@
               { "color": "orange", "value": null }
             ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -246,13 +246,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "rate(runway_job_failures_total[1m])",
+          "expr": "increase(runway_job_failures_total[5m])",
           "legendFormat": "{{reason}}",
           "refId": "A"
         }
       ],
       "title": "Job Failures by Reason",
-      "description": "rate(runway_job_failures_total[1m]) broken down by reason label. Reasons surfaced from K8s: OOMKilled, DeadlineExceeded, NonZeroExit.",
+      "description": "increase(runway_job_failures_total[5m]) broken down by reason label. Reasons surfaced from K8s: OOMKilled, DeadlineExceeded, NonZeroExit.",
       "type": "timeseries"
     }
   ],

@@ -42,6 +42,7 @@ import asyncio
 import logging
 import os
 
+import metrics
 from k8s_client import KubernetesClient
 from models import JobStatus
 from quota import GPUQuotaStore
@@ -96,9 +97,6 @@ class QuotaReconciler:
         dict write is GIL-atomic; no async lock needed here. CPU-only jobs
         (gpu_count == 0) are skipped — they hold no GPU quota.
         """
-        if gpu_count == 0:
-            return
-
         self._active_jobs[job_id] = (tenant_id, gpu_count)
 
         logger.info(
@@ -198,6 +196,9 @@ class QuotaReconciler:
                         "gpu_count": gpu_count,
                     },
                 )
+                if status_response.status in {JobStatus.FAILED, JobStatus.DEADLINE}:
+                    reason = status_response.failure_reason or status_response.status.value
+                    metrics.job_failures_total.labels(reason=reason).inc()
                 await self._release_and_untrack(job_id, tenant_id, gpu_count)
 
     async def _release_and_untrack(
