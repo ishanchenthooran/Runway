@@ -27,8 +27,9 @@ from prometheus_client import make_asgi_app
 import metrics
 from admission import check_admission
 from cost import estimate_cost
+from diagnostics import DiagnosticsAgent
 from k8s_client import KubernetesClient
-from models import JobSpec, JobStatus, JobStatusResponse, JobSubmitResponse
+from models import DiagnosisResponse, JobSpec, JobStatus, JobStatusResponse, JobSubmitResponse
 from quota import GPUQuotaStore
 from quota_reconciler import QuotaReconciler
 from rate_limit import RateLimiter
@@ -46,6 +47,13 @@ quota_store = GPUQuotaStore()
 rate_limiter = RateLimiter()
 k8s = KubernetesClient()
 reconciler = QuotaReconciler(k8s, quota_store)
+
+# Stores the original JobSpec for each successfully submitted job.
+# Used by the diagnostics agent to surface resource requests when explaining failures.
+# Lost on restart — consistent with quota state and other in-memory v1 trade-offs.
+job_specs: dict[str, JobSpec] = {}
+
+diagnostics_agent = DiagnosticsAgent(k8s, job_specs)
 
 
 @asynccontextmanager
@@ -141,6 +149,9 @@ def submit_job(spec: JobSpec) -> JobSubmitResponse:
         # when the job reaches a terminal state (SUCCEEDED / FAILED / DEADLINE).
         reconciler.register(job_id, spec.tenant_id, spec.gpu_count)
 
+        # Step 7: Store the spec for the diagnostics agent.
+        job_specs[job_id] = spec
+
     except HTTPException as exc:
         # Prefer machine-readable error codes emitted by admission/quota/rate-limit modules.
         reason = "UNKNOWN"
@@ -187,3 +198,36 @@ def get_job_status(job_id: str) -> JobStatusResponse:
     if status is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
     return status
+
+
+# ---------------------------------------------------------------------------
+# AI diagnostics
+# ---------------------------------------------------------------------------
+
+
+@app.get("/jobs/{job_id}/diagnose", response_model=DiagnosisResponse, tags=["jobs"])
+def diagnose_job(job_id: str) -> DiagnosisResponse:
+    """
+    Run the AI diagnostics agent against a job.
+
+    The agent uses Claude tool use to query job status and the original spec,
+    then produces a natural-language diagnosis and remediation suggestion.
+
+    Intended for failed jobs (FAILED or DEADLINE status), but will run against
+    any job ID. Returns 404 if the job does not exist in Kubernetes.
+    """
+    # Verify the job exists before invoking the agent.
+    status = k8s.get_job_status(job_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+
+    try:
+        diagnosis = diagnostics_agent.diagnose(job_id)
+    except Exception as exc:
+        logger.exception("Diagnostics agent failed", extra={"job_id": job_id})
+        raise HTTPException(status_code=500, detail=f"Diagnostics failed: {exc}") from exc
+
+    metrics.diagnoses_total.inc()
+
+    logger.info("Diagnosis complete", extra={"job_id": job_id})
+    return DiagnosisResponse(job_id=job_id, diagnosis=diagnosis)

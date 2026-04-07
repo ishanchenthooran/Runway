@@ -145,3 +145,20 @@ class JobStatusResponse(BaseModel):
     status: JobStatus
     tenant_id: str
     failure_reason: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics response
+# ---------------------------------------------------------------------------
+
+class DiagnosisResponse(BaseModel):
+    """
+    Returned by GET /jobs/{job_id}/diagnose.
+
+    diagnosis is a natural-language explanation of what went wrong
+    and a concrete remediation suggestion, produced by the Claude-backed
+    diagnostics agent after querying job status and spec via tool use.
+    """
+
+    job_id: str
+    diagnosis: str

@@ -42,6 +42,13 @@ job_failures_total = Counter(
     labelnames=["reason"],
 )
 
+# --- AI diagnostics ---
+
+diagnoses_total = Counter(
+    "runway_diagnoses_total",
+    "Total number of AI diagnostic requests handled by the diagnose endpoint",
+)
+
 # --- Latency ---
 
 job_submission_latency_seconds = Histogram(
