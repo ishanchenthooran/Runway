@@ -18,6 +18,7 @@ It provides:
 - Pre-execution cost estimation
 - Kubernetes-native retry semantics
 - Prometheus-compatible observability
+- AI-backed job diagnostics via Claude API tool use
 
 Execution is fully delegated to Kubernetes Jobs.  
 Runway does **not** implement a scheduler, queue, or workflow engine.
@@ -27,6 +28,8 @@ Runway does **not** implement a scheduler, queue, or workflow engine.
 ## Architecture Overview
 
 Runway follows a strict **control-plane / data-plane separation**.
+
+![Runway Architecture](docs/runway_architecture.png)
 
 ### Control Plane
 
@@ -63,6 +66,10 @@ Prometheus / Grafana
 - Latency tracking  
 - Health monitoring  
 
+![Runway Grafana Dashboard](docs/runway_dashboard.png)
+
+The dashboard surfaces four panels in real time: job submission rate, rejections by reason (GPU quota exceeded, admission violations), submission latency (p50/p99), and job failures by reason (OOMKilled, deadline exceeded).
+
 Kubernetes remains the execution authority.
 
 ---
@@ -88,6 +95,25 @@ Runway:
 4. Creates a Kubernetes Job  
 
 Kubernetes is the source of truth for execution state.
+
+---
+
+## AI Diagnostics Agent
+
+`GET /jobs/{id}/diagnose` invokes a Claude-backed agent that investigates why a job failed and returns a plain-language diagnosis with a concrete remediation.
+
+The agent runs a tool-use loop (not a static prompt): Claude decides which tools to call and when it has enough information to stop. Tools available:
+
+| Tool | What it returns |
+|---|---|
+| `get_job_status` | Current K8s status and `failure_reason` |
+| `get_job_spec` | Original resource requests (cpu, memory_mb, gpu_count, timeout_s, image) |
+
+Example output for an OOMKilled job:
+
+> "The job failed because it requested only 32 MB of memory but attempted to allocate 200 MB. Increase `memory_mb` to at least 256 to give the workload sufficient headroom."
+
+Requires `ANTHROPIC_API_KEY` set in the environment.
 
 ---
 
@@ -201,11 +227,12 @@ Runway/
 
 ### Status
 
-All functional work complete (v0.9.0).
+All functional work complete (v1.0.0).
 
 - Control plane: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
 - GPU quota reconciler: background async poll, releases quota on terminal job state
 - Observability stack live: Prometheus scraping runway-api (ServiceMonitor), Grafana dashboard with 4 panels
-- All 4 demo scenarios validated end-to-end on kind: happy path, OOMKilled, GPU quota rejection, rate limit
+- AI Diagnostics Agent: `GET /jobs/{id}/diagnose` — Claude-backed tool-use loop diagnosing failures and suggesting fixes
+- All 5 demo scenarios validated end-to-end on kind: happy path, OOMKilled, GPU quota rejection, rate limit, AI diagnosis
 - Runtime target: kind (local); EKS Terraform in `infra/terraform/` as production IaC reference
 

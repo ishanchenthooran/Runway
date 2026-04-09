@@ -101,3 +101,32 @@ GPU quota is reserved at submission time and released by a background reconcilia
 **Logs** — The control plane emits structured (JSON) logs for each request, admission decision, K8s API call, and job state transition. Log verbosity is configurable via environment variable.
 
 **Health check** — `GET /healthz` returns `200 OK` when the process is alive. It does not probe K8s connectivity — it is a liveness signal only.
+
+---
+
+## 8. AI Diagnostics Agent
+
+**Endpoint:** `GET /jobs/{id}/diagnose`
+
+When a job fails, callers can invoke the diagnostics agent to get a plain-language explanation of the root cause and a concrete remediation.
+
+**Mechanism** — The agent runs a tool-use loop backed by the Claude API (`claude-haiku-4-5`). Claude is given two tools and decides autonomously which to call and when it has gathered enough evidence to produce a diagnosis. The control plane does not hardcode the diagnostic logic — the LLM drives the investigation.
+
+**Tools available to the agent:**
+
+| Tool | Returns |
+|---|---|
+| `get_job_status(job_id)` | Current K8s status and `failure_reason` (OOMKilled, DeadlineExceeded, NonZeroExit) |
+| `get_job_spec(job_id)` | Original resource requests: image, cpu, memory_mb, gpu_count, timeout_s |
+
+**Output** — A plain-language markdown string containing: a description of what happened, the likely root cause, and a concrete fix (e.g. "Increase `memory_mb` from 32 to at least 256").
+
+**Design constraints:**
+- Stateless: no conversation history is stored between calls
+- Synchronous: the route blocks while the agent loop runs (acceptable for demo scope)
+- Fails loudly: K8s tool errors or API failures surface as HTTP 500
+- `job_specs` dict in `main.py` is populated on every successful submission so `get_job_spec` has data to return in-process
+
+**Configuration** — Requires `ANTHROPIC_API_KEY` environment variable. Model is configurable via the `MODEL` constant in `diagnostics.py`.
+
+**Metric** — `runway_diagnoses_total` increments on each completed diagnosis call.

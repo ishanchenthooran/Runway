@@ -4,6 +4,23 @@ All notable changes to Runway are documented here.
 
 ---
 
+## [1.0.0] — 2026-04-07
+
+### Added
+- AI Diagnostics Agent (`services/runway-api/diagnostics.py`): agentic `GET /jobs/{id}/diagnose` endpoint backed by the Claude API (claude-haiku-4-5)
+- Agent runs a tool-use loop with two tools: `get_job_status` (fetches K8s status + `failure_reason`) and `get_job_spec` (fetches original resource requests); Claude decides what to call and when to stop
+- Returns a plain-language diagnosis and concrete remediation steps (e.g. increase `memory_mb` after OOMKill)
+- `runway_diagnoses_total` Prometheus counter added to `metrics.py`
+- `anthropic>=0.25.0` added to `requirements.txt`; requires `ANTHROPIC_API_KEY` environment variable
+- Demo scenario E added to `docs/demo_script.md`: OOMKilled → diagnose → remediated resubmit
+
+### Design notes
+- Agent is stateless: no conversation history between calls
+- Route blocks synchronously while the agent loop runs (acceptable for demo scope)
+- Spec store (`job_specs` dict in `main.py`) populated on every successful submission so `get_job_spec` has data to return
+
+---
+
 ## [0.9.0] — 2026-03-20
 
 ### Added
