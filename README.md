@@ -187,7 +187,6 @@ Runway/
 │   ├── changelog.md         # Historical changes
 │   ├── scale_analysis.md    # Failure modes and v2 design at 10x load
 │   ├── grafana_dashboard.json  # Grafana dashboard export
-│   └── demo_script.md       # 4-scenario walkthrough with curl commands
 │
 ├── services/
 │   └── runway-api/          # FastAPI control plane
