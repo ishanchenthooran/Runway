@@ -222,16 +222,3 @@ Runway/
 - Cost visibility before execution
 - AI-infrastructure-aware without becoming an ML platform
 
----
-
-### Status
-
-All functional work complete (v1.0.0).
-
-- Control plane: admission control, GPU quota enforcement, rate limiting, cost estimation, failure reason surfacing
-- GPU quota reconciler: background async poll, releases quota on terminal job state
-- Observability stack live: Prometheus scraping runway-api (ServiceMonitor), Grafana dashboard with 4 panels
-- AI Diagnostics Agent: `GET /jobs/{id}/diagnose` — Claude-backed tool-use loop diagnosing failures and suggesting fixes
-- All 5 demo scenarios validated end-to-end on kind: happy path, OOMKilled, GPU quota rejection, rate limit, AI diagnosis
-- Runtime target: kind (local); EKS Terraform in `infra/terraform/` as production IaC reference
-
